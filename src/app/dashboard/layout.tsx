@@ -23,10 +23,16 @@ function getPageTitle(pathname: string): string {
         return 'ユーザー管理';
       case 'roles':
         return 'ロール管理';
+      case 'companies':
+        return '会社管理';
+      case 'departments':
+        return '部署管理';
       case 'app-list':
         return 'アプリ一覧';
       case 'account':
         return 'アカウント設定';
+      case 'documentation':
+        return 'ドキュメント';
       default:
         return path[1].charAt(0).toUpperCase() + path[1].slice(1);
     }
@@ -72,12 +78,12 @@ function DashboardLayoutContent({
   
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-background">
-        <Sidebar className="h-screen" />
-        <div className="flex flex-col flex-1">
-          <Header className="border-b z-50 h-[47px]" pageTitle={pageTitle} />
-          <main className="flex-1 overflow-auto">
-            <div className="h-full py-6 px-4 md:px-6">
+      <div className="flex h-screen w-full bg-background overflow-hidden">
+        <Sidebar className="h-screen z-10" />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <Header className="border-b z-20 h-[47px]" pageTitle={pageTitle} />
+          <main className="flex-1 overflow-auto relative">
+            <div className="h-full py-6 px-4 md:px-6 overflow-auto">
               {children}
             </div>
           </main>

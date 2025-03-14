@@ -10,6 +10,7 @@ const notoSansJP = Noto_Sans_JP({
   subsets: ["latin"],
   weight: ["100", "300", "400", "500", "700", "900"],
   display: "swap",
+  preload: true,
 });
 
 const geistSans = Geist({
@@ -33,12 +34,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" suppressHydrationWarning>
+    <html lang="ja" suppressHydrationWarning className={notoSansJP.className}>
       <head>
         <meta name="viewport" content="viewport-fit=cover" />
       </head>
       <body
-        className={`${notoSansJP.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${notoSansJP.variable} ${notoSansJP.className} ${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
         suppressHydrationWarning
       >
         <ClientProviders>{children}</ClientProviders>

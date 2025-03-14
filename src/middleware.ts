@@ -33,6 +33,6 @@ export const config = {
     "/profile/:path*",
     "/login",
     // 認証APIルートとNext.jsの静的ファイル、問題のあるページは除外
-    "/((?!apps/demo1|apps/demo2|api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.webmanifest).*)",
   ],
 };

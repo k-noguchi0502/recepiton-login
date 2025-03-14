@@ -23,14 +23,45 @@ model Role {
   updatedAt   DateTime @updatedAt
 }
 
+model Company {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  address     String?
+  phone       String?
+  email       String?
+  website     String?
+  users       User[]
+  departments Department[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, companyId])
+}
+
 model User {
-  id            String    @id @default(cuid())
+  id            String      @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?     @unique
   password      String?
   image         String?
   roleId        String?
-  role          Role?     @relation(fields: [roleId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          Role?       @relation(fields: [roleId], references: [id])
+  companyId     String?
+  company       Company?    @relation(fields: [companyId], references: [id])
+  departmentId  String?
+  department    Department? @relation(fields: [departmentId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }

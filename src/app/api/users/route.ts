@@ -37,8 +37,22 @@ export async function GET() {
         name: true,
         email: true,
         roleId: true,
+        companyId: true,
+        departmentId: true,
         createdAt: true,
         role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        company: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        department: {
           select: {
             id: true,
             name: true,
@@ -82,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     // リクエストボディを取得
     const body = await request.json();
-    const { name, email, password, roleId } = body;
+    const { name, email, password, roleId, companyId, departmentId } = body;
 
     // バリデーション
     if (!name || !email || !password || !roleId) {
@@ -116,6 +130,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 会社の存在チェック（指定されている場合）
+    if (companyId) {
+      const company = await prisma.company.findUnique({
+        where: { id: companyId },
+      });
+
+      if (!company) {
+        return NextResponse.json(
+          { error: "指定された会社が存在しません" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 部署の存在チェック（指定されている場合）
+    if (departmentId) {
+      const department = await prisma.department.findUnique({
+        where: { id: departmentId },
+      });
+
+      if (!department) {
+        return NextResponse.json(
+          { error: "指定された部署が存在しません" },
+          { status: 400 }
+        );
+      }
+
+      // 部署が指定されている場合は会社も指定されているか確認
+      if (!companyId) {
+        return NextResponse.json(
+          { error: "部署を指定する場合は会社も指定してください" },
+          { status: 400 }
+        );
+      }
+
+      // 部署が指定された会社に属しているか確認
+      if (department.companyId !== companyId) {
+        return NextResponse.json(
+          { error: "指定された部署は指定された会社に属していません" },
+          { status: 400 }
+        );
+      }
+    }
+
     // パスワードのハッシュ化
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -126,14 +184,30 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         roleId,
+        companyId,
+        departmentId,
       },
       select: {
         id: true,
         name: true,
         email: true,
         roleId: true,
+        companyId: true,
+        departmentId: true,
         createdAt: true,
         role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        company: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        department: {
           select: {
             id: true,
             name: true,

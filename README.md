@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ログイン・認証システム ドキュメント
 
-## Getting Started
+このディレクトリには、ログイン・認証システムに関する技術ドキュメントが含まれています。
 
-First, run the development server:
+## 目次
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. [システム仕様書](system_specification.md) - システム全体の概要と仕様
+2. [データベーススキーマ](database_schema.md) - データベース設計とER図
+3. [API仕様書](api_specification.md) - APIエンドポイントの詳細仕様
+4. [アプリケーション機能概要](application_overview.md) - 主要機能と画面構成
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## システム概要
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+このシステムは、Next.jsとPrismaを使用した管理者向けのログイン・認証システムです。ユーザーは権限に基づいて様々なアプリケーションにアクセスできるポータルサイトとなっています。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 主な機能
+- ユーザー認証（ログイン/ログアウト）
+- ロールベースのアクセス制御（RBAC）
+- ユーザー管理（作成、閲覧、更新、削除）
+- ロール管理（作成、閲覧、更新、削除）
+- アプリケーションポータル（権限に基づいたアプリケーション一覧表示）
+- アプリケーションごとの戻るボタン制御（ブラウザの戻る操作の許可/禁止、共通レイアウトでの一元管理）
 
-## Learn More
+## 技術スタック
 
-To learn more about Next.js, take a look at the following resources:
+- **フロントエンド**
+  - Next.js (App Router)
+  - React
+  - TypeScript
+  - Tailwind CSS
+  - shadcn/ui (UIコンポーネント)
+  - Framer Motion (アニメーション)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **バックエンド**
+  - Next.js API Routes
+  - Prisma ORM
+  - NextAuth.js (認証)
+  - bcrypt (パスワードハッシュ化)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **データベース**
+  - PostgreSQL 

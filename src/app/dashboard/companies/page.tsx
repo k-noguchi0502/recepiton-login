@@ -3,28 +3,23 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
+  DialogTrigger,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import {
   Plus,
   Pencil,
   Trash2,
   Search,
 } from "lucide-react";
-import { permissionGroups, hasPermission } from "@/lib/permissions";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardHeader,
@@ -40,63 +35,66 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { RolesSkeleton } from "@/components/SkeletonLoading";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { motion } from "framer-motion";
+import { CompaniesSkeleton } from "@/components/SkeletonLoading";
 import { toast } from "sonner";
-import { Role, PermissionGroup, RoleFormData } from "@/types";
+import { Company, CompanyFormData } from "@/types";
 
-// 権限グループの型アサーション
-const typedPermissionGroups = permissionGroups as PermissionGroup[];
-
-export default function RolesPage() {
+export default function CompaniesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [currentRole, setCurrentRole] = useState<Role | null>(null);
+  const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [formData, setFormData] = useState<RoleFormData>({
+  const [formData, setFormData] = useState<CompanyFormData>({
     id: "",
     name: "",
     description: "",
-    permissions: [],
+    address: "",
+    phone: "",
+    email: "",
+    website: "",
   });
 
   // 認証チェック
   useEffect(() => {
     if (status === "unauthenticated") {
       // 直接リダイレクトして履歴をリセット
-      window.location.replace('/login');
+      window.location.replace("/login");
     } else if (
       status === "authenticated" &&
-      !hasPermission(session, "role:read")
+      (!session.user.role || !session.user.role.permissions.includes("company:read"))
     ) {
       router.push("/dashboard");
     }
   }, [status, session, router]);
 
-  // ロール一覧の取得
+  // 会社一覧の取得
   useEffect(() => {
     if (status === "authenticated") {
-      fetchRoles();
+      fetchCompanies();
     }
   }, [status]);
 
-  const fetchRoles = async () => {
+  const fetchCompanies = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/roles");
+      const response = await fetch("/api/companies");
       if (!response.ok) {
-        throw new Error("ロールの取得に失敗しました");
+        throw new Error("会社の取得に失敗しました");
       }
       const data = await response.json();
-      setRoles(data);
+      setCompanies(data);
     } catch (error) {
-      console.error("ロール取得エラー:", error);
+      console.error("会社取得エラー:", error);
       toast.error("エラー", {
-        description: "ロールの取得中にエラーが発生しました",
+        description: "会社の取得中にエラーが発生しました",
         duration: 5000,
       });
     } finally {
@@ -104,49 +102,28 @@ export default function RolesPage() {
     }
   };
 
-  // フォームの初期化
-  const initializeForm = (role?: Role) => {
-    if (role) {
-      setFormData({
-        id: role.id,
-        name: role.name,
-        description: role.description || "",
-        permissions: role.permissions,
-      });
-      setCurrentRole(role);
-    } else {
-      setFormData({
-        id: "",
-        name: "",
-        description: "",
-        permissions: [],
-      });
-      setCurrentRole(null);
-    }
-  };
-
-  // ロールの削除
+  // 会社の削除
   const handleDelete = async () => {
-    if (!currentRole) return;
+    if (!currentCompany) return;
 
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/roles/${currentRole.id}`, {
+      const response = await fetch(`/api/companies/${currentCompany.id}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "ロールの削除に失敗しました");
+        throw new Error(data.error || "会社の削除に失敗しました");
       }
 
       toast.success("削除完了", {
-        description: `ロール「${currentRole.name}」が正常に削除されました`,
+        description: `会社「${currentCompany.name}」が正常に削除されました`,
         duration: 3000,
       });
       setIsDeleteDialogOpen(false);
-      fetchRoles();
+      fetchCompanies();
     } catch (error) {
       if (error instanceof Error) {
         toast.error("エラー", {
@@ -155,7 +132,7 @@ export default function RolesPage() {
         });
       } else {
         toast.error("エラー", {
-          description: "ロールの削除中にエラーが発生しました",
+          description: "会社の削除中にエラーが発生しました",
           duration: 5000,
         });
       }
@@ -164,13 +141,13 @@ export default function RolesPage() {
     }
   };
 
-  // ロールの作成/更新
+  // 会社の作成/更新
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const url = formData.id ? `/api/roles/${formData.id}` : "/api/roles";
+      const url = formData.id ? `/api/companies/${formData.id}` : "/api/companies";
       const method = formData.id ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -183,23 +160,23 @@ export default function RolesPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "ロールの保存に失敗しました");
+        throw new Error(data.error || "会社の保存に失敗しました");
       }
 
       if (formData.id) {
         toast.success("更新完了", {
-          description: "ロールが正常に更新されました",
+          description: "会社が正常に更新されました",
           duration: 3000,
         });
       } else {
         toast.success("作成完了", {
-          description: "ロールが正常に作成されました",
+          description: "会社が正常に作成されました",
           duration: 3000,
         });
       }
       
       setIsDialogOpen(false);
-      fetchRoles();
+      fetchCompanies();
     } catch (error) {
       if (error instanceof Error) {
         toast.error("エラー", {
@@ -208,7 +185,7 @@ export default function RolesPage() {
         });
       } else {
         toast.error("エラー", {
-          description: "ロールの保存中にエラーが発生しました",
+          description: "会社の保存中にエラーが発生しました",
           duration: 5000,
         });
       }
@@ -217,18 +194,31 @@ export default function RolesPage() {
     }
   };
 
-  // 権限の切り替え
-  const togglePermission = (permission: string) => {
-    setFormData((prev) => {
-      const permissions = [...prev.permissions];
-      const index = permissions.indexOf(permission);
-      if (index === -1) {
-        permissions.push(permission);
-      } else {
-        permissions.splice(index, 1);
-      }
-      return { ...prev, permissions };
-    });
+  // フォームの初期化
+  const initializeForm = (company?: Company) => {
+    if (company) {
+      setFormData({
+        id: company.id,
+        name: company.name,
+        description: company.description || "",
+        address: company.address || "",
+        phone: company.phone || "",
+        email: company.email || "",
+        website: company.website || "",
+      });
+      setCurrentCompany(company);
+    } else {
+      setFormData({
+        id: "",
+        name: "",
+        description: "",
+        address: "",
+        phone: "",
+        email: "",
+        website: "",
+      });
+      setCurrentCompany(null);
+    }
   };
 
   // フォーム入力の処理
@@ -239,19 +229,24 @@ export default function RolesPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 検索でフィルタリングされたロール
-  const filteredRoles = roles.filter((role) => {
+  // 検索でフィルタリングされた会社
+  const filteredCompanies = companies.filter((company) => {
     return (
       searchTerm === "" ||
-      role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (role.description &&
-        role.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (company.description &&
+        company.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (company.address &&
+        company.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (company.email &&
+        company.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      false
     );
   });
 
   // ローディング中の表示
-  if (isLoading && roles.length === 0) {
-    return <RolesSkeleton />;
+  if (isLoading && companies.length === 0) {
+    return <CompaniesSkeleton />;
   }
 
   // コンテンツをPageTransitionでラップして表示
@@ -267,17 +262,12 @@ export default function RolesPage() {
       className="overflow-hidden"
     >
       <div className="space-y-6">
-        {/* ページヘッダー - ページタイトルは既にヘッダーコンポーネントに表示されているため省略 */}
-        <div className="hidden">
-          <h1 className="text-2xl font-bold text-gray-900">ロール管理</h1>
-        </div>
-
         {/* 検索と新規作成 */}
         <Card>
           <CardHeader>
-            <CardTitle>ロール検索</CardTitle>
+            <CardTitle>会社検索</CardTitle>
             <CardDescription>
-              ロール名や説明で検索できます
+              会社名や説明で検索できます
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -286,11 +276,10 @@ export default function RolesPage() {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
                   type="search"
-                  placeholder="ロールを検索..."
+                  placeholder="会社を検索..."
                   className="pl-8"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  autoFocus={false}
                 />
               </div>
               <Dialog
@@ -306,11 +295,11 @@ export default function RolesPage() {
                     }}
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    新規ロール作成
+                    新規会社作成
                   </Button>
                 </DialogTrigger>
                 <DialogContent
-                  className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
+                  className="sm:max-w-[600px]"
                   autoFocus={false}
                   onOpenAutoFocus={(e) => e.preventDefault()}
                   onInteractOutside={() => {
@@ -320,17 +309,17 @@ export default function RolesPage() {
                 >
                   <DialogHeader>
                     <DialogTitle>
-                      {formData.id ? "ロールの編集" : "新規ロールの作成"}
+                      {formData.id ? "会社の編集" : "新規会社の作成"}
                     </DialogTitle>
                     <DialogDescription>
-                      ロール情報と権限を設定してください
+                      会社情報を入力してください
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="name" className="text-right">
-                          ロール名
+                          会社名
                         </Label>
                         <Input
                           id="name"
@@ -346,54 +335,68 @@ export default function RolesPage() {
                         <Label htmlFor="description" className="text-right">
                           説明
                         </Label>
-                        <Input
+                        <Textarea
                           id="description"
                           name="description"
                           value={formData.description}
                           onChange={handleChange}
                           className="col-span-3"
+                          rows={3}
                           autoFocus={false}
                         />
                       </div>
-
-                      <Separator className="my-4" />
-
-                      <div className="grid gap-4">
-                        <h3 className="text-lg font-medium">権限設定</h3>
-                        <p className="text-sm text-gray-500">
-                          このロールに付与する権限を選択してください
-                        </p>
-
-                        {typedPermissionGroups.map((group) => (
-                          <div key={group.name} className="space-y-2">
-                            <h4 className="font-medium">{group.name}</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                              {group.permissions.map((permission) => (
-                                <div
-                                  key={permission.id}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={permission.id}
-                                    checked={formData.permissions.includes(
-                                      permission.id
-                                    )}
-                                    onCheckedChange={() =>
-                                      togglePermission(permission.id)
-                                    }
-                                  />
-                                  <Label
-                                    htmlFor={permission.id}
-                                    className="cursor-pointer"
-                                  >
-                                    {permission.label}
-                                  </Label>
-                                </div>
-                              ))}
-                            </div>
-                            <Separator className="my-2" />
-                          </div>
-                        ))}
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="address" className="text-right">
+                          住所
+                        </Label>
+                        <Input
+                          id="address"
+                          name="address"
+                          value={formData.address}
+                          onChange={handleChange}
+                          className="col-span-3"
+                          autoFocus={false}
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="phone" className="text-right">
+                          電話番号
+                        </Label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          className="col-span-3"
+                          autoFocus={false}
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="email" className="text-right">
+                          メールアドレス
+                        </Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          className="col-span-3"
+                          autoFocus={false}
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="website" className="text-right">
+                          Webサイト
+                        </Label>
+                        <Input
+                          id="website"
+                          name="website"
+                          value={formData.website}
+                          onChange={handleChange}
+                          className="col-span-3"
+                          autoFocus={false}
+                        />
                       </div>
                     </div>
                     <DialogFooter>
@@ -423,53 +426,76 @@ export default function RolesPage() {
           </CardContent>
         </Card>
 
-        {/* ロール一覧 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>ロール一覧</CardTitle>
+        {/* 会社一覧 */}
+        <Card className="flex flex-col">
+          <CardHeader className="flex-none">
+            <CardTitle>会社一覧</CardTitle>
             <CardDescription>
-              システムに登録されているロールの一覧です
+              {filteredCompanies.length === 0
+                ? "検索条件に一致する会社がありません"
+                : `${filteredCompanies.length}件の会社が見つかりました`}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-2">
-                <div className="h-8 bg-gray-200 animate-pulse rounded-md" />
-                <div className="h-8 bg-gray-200 animate-pulse rounded-md" />
-                <div className="h-8 bg-gray-200 animate-pulse rounded-md" />
-              </div>
-            ) : filteredRoles.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">
-                {searchTerm
-                  ? "検索条件に一致するロールが見つかりませんでした"
-                  : "ロールが登録されていません"}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
+          <CardContent className="flex-1 overflow-hidden">
+            <div className="overflow-auto max-h-[calc(100vh-25rem)]">
+              <Table className="relative">
+                <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
+                  <TableRow>
+                    <TableHead className="bg-white border-b">会社名</TableHead>
+                    <TableHead className="bg-white border-b">説明</TableHead>
+                    <TableHead className="bg-white border-b">住所</TableHead>
+                    <TableHead className="bg-white border-b">連絡先</TableHead>
+                    <TableHead className="text-right bg-white border-b">
+                      操作
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCompanies.length === 0 ? (
                     <TableRow>
-                      <TableHead>ロール名</TableHead>
-                      <TableHead>説明</TableHead>
-                      <TableHead>権限数</TableHead>
-                      <TableHead className="text-right">操作</TableHead>
+                      <TableCell colSpan={5} className="text-center py-4">
+                        会社が見つかりません
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRoles.map((role) => (
-                      <TableRow key={role.id}>
+                  ) : (
+                    filteredCompanies.map((company) => (
+                      <TableRow key={company.id}>
                         <TableCell className="font-medium">
-                          {role.name}
+                          {company.name}
                         </TableCell>
-                        <TableCell>{role.description || "-"}</TableCell>
-                        <TableCell>{role.permissions.length}</TableCell>
+                        <TableCell>{company.description || "-"}</TableCell>
+                        <TableCell>{company.address || "-"}</TableCell>
+                        <TableCell>
+                          {company.phone && <div>{company.phone}</div>}
+                          {company.email && <div>{company.email}</div>}
+                          {company.website && (
+                            <div>
+                              <a
+                                href={
+                                  company.website.startsWith("http")
+                                    ? company.website
+                                    : `https://${company.website}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                {company.website}
+                              </a>
+                            </div>
+                          )}
+                          {!company.phone &&
+                            !company.email &&
+                            !company.website &&
+                            "-"}
+                        </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end space-x-2">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                initializeForm(role);
+                                initializeForm(company);
                                 setIsDialogOpen(true);
                               }}
                             >
@@ -481,14 +507,9 @@ export default function RolesPage() {
                               size="sm"
                               className="text-red-600 hover:text-red-700"
                               onClick={() => {
-                                setCurrentRole(role);
+                                setCurrentCompany(company);
                                 setIsDeleteDialogOpen(true);
                               }}
-                              disabled={
-                                role.name === "admin" ||
-                                role.name === "user" ||
-                                role.name === "viewer"
-                              }
                             >
                               <Trash2 className="h-4 w-4" />
                               <span className="sr-only">削除</span>
@@ -496,11 +517,11 @@ export default function RolesPage() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
@@ -514,20 +535,14 @@ export default function RolesPage() {
             onInteractOutside={(e) => e.preventDefault()}
           >
             <DialogHeader>
-              <DialogTitle>ロールの削除</DialogTitle>
+              <DialogTitle>会社の削除</DialogTitle>
               <DialogDescription>
-                このロールを削除してもよろしいですか？この操作は元に戻せません。
+                この会社を削除してもよろしいですか？この操作は元に戻せません。
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <p className="text-sm text-gray-700">
-                ロール名: <span className="font-medium">{currentRole?.name}</span>
-              </p>
-              <p className="text-sm text-gray-700">
-                説明: <span className="font-medium">{currentRole?.description || "-"}</span>
-              </p>
-              <p className="text-sm text-gray-700 mt-2">
-                このロールを削除すると、このロールに割り当てられているユーザーは権限を失います。
+                会社名: <span className="font-medium">{currentCompany?.name}</span>
               </p>
             </div>
             <DialogFooter>

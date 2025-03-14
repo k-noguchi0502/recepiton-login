@@ -70,6 +70,24 @@ export const permissionGroups = [
     ],
   },
   {
+    name: "会社管理",
+    permissions: [
+      { id: "company:create", label: "会社作成" },
+      { id: "company:read", label: "会社閲覧" },
+      { id: "company:update", label: "会社更新" },
+      { id: "company:delete", label: "会社削除" },
+    ],
+  },
+  {
+    name: "部署管理",
+    permissions: [
+      { id: "department:create", label: "部署作成" },
+      { id: "department:read", label: "部署閲覧" },
+      { id: "department:update", label: "部署更新" },
+      { id: "department:delete", label: "部署削除" },
+    ],
+  },
+  {
     name: "アプリ",
     permissions: [
       { id: "page:demo1", label: "デモ1アプリケーション" },

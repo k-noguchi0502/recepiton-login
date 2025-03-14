@@ -1,7 +1,26 @@
-import { User } from "@/types";
-
 interface UserInfoCardProps {
-  user: User | undefined;
+  user: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    role?: {
+      id: string;
+      name: string;
+      description?: string;
+      permissions: string[];
+    } | null;
+    company?: {
+      id: string;
+      name: string;
+      description?: string;
+    } | null;
+    department?: {
+      id: string;
+      name: string;
+      description?: string;
+    } | null;
+  } | undefined;
   className?: string;
 }
 

@@ -14,70 +14,63 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { AlertCircle, CheckCircle2, Plus, Pencil, Trash2, Search, Eye, EyeOff } from "lucide-react";
-import { 
-  Card, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription, 
-  CardContent 
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
 } from "@/components/ui/card";
-import { 
-  Alert, 
-  AlertTitle, 
-  AlertDescription 
-} from "@/components/ui/alert";
 import {
   Table,
   TableHeader,
   TableBody,
   TableRow,
   TableHead,
-  TableCell
+  TableCell,
 } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { motion } from "framer-motion";
 import { UsersSkeleton } from "@/components/SkeletonLoading";
-
-// ユーザーの型定義
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  roleId: string | null;
-  role?: {
-    id: string;
-    name: string;
-  };
-  createdAt: string;
-}
-
-// ロールの型定義
-interface Role {
-  id: string;
-  name: string;
-  description: string | null;
-}
+import { toast } from "sonner";
+import { User, Role, Company, Department, UserFormData } from "@/types";
 
 export default function UsersPage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<UserFormData>({
     id: "",
     name: "",
     email: "",
     password: "",
     roleId: "",
+    companyId: "",
+    departmentId: "",
   });
   const [showPassword, setShowPassword] = useState(false);
 
@@ -85,10 +78,11 @@ export default function UsersPage() {
   useEffect(() => {
     if (status === "unauthenticated") {
       // 直接リダイレクトして履歴をリセット
-      window.location.replace('/login');
+      window.location.replace("/login");
     } else if (
       status === "authenticated" &&
-      (!session.user.role || !session.user.role.permissions.includes("user:read"))
+      (!session.user.role ||
+        !session.user.role.permissions.includes("user:read"))
     ) {
       router.push("/dashboard");
     }
@@ -99,8 +93,54 @@ export default function UsersPage() {
     if (status === "authenticated") {
       fetchUsers();
       fetchRoles();
+      fetchCompanies();
     }
   }, [status]);
+
+  // 会社一覧の取得
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch("/api/companies");
+      if (!response.ok) {
+        throw new Error("会社の取得に失敗しました");
+      }
+      const data = await response.json();
+      setCompanies(data);
+    } catch (error) {
+      console.error("会社取得エラー:", error);
+      toast.error("エラー", {
+        description: "会社の取得中にエラーが発生しました",
+        duration: 5000,
+      });
+    }
+  };
+
+  // 部署一覧の取得
+  const fetchDepartments = async (companyId: string) => {
+    try {
+      const response = await fetch(`/api/companies/${companyId}/departments`);
+      if (!response.ok) {
+        throw new Error("部署の取得に失敗しました");
+      }
+      const data = await response.json();
+      setFilteredDepartments(data);
+    } catch (error) {
+      console.error("部署取得エラー:", error);
+      toast.error("エラー", {
+        description: "部署の取得中にエラーが発生しました",
+        duration: 5000,
+      });
+    }
+  };
+
+  // 会社が変更されたときに部署一覧を更新
+  useEffect(() => {
+    if (formData.companyId) {
+      fetchDepartments(formData.companyId);
+    } else {
+      setFilteredDepartments([]);
+    }
+  }, [formData.companyId]);
 
   const fetchUsers = async () => {
     try {
@@ -113,7 +153,10 @@ export default function UsersPage() {
       setUsers(data);
     } catch (error) {
       console.error("ユーザー取得エラー:", error);
-      setError("ユーザーの取得中にエラーが発生しました");
+      toast.error("エラー", {
+        description: "ユーザーの取得中にエラーが発生しました",
+        duration: 5000,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +172,10 @@ export default function UsersPage() {
       setRoles(data);
     } catch (error) {
       console.error("ロール取得エラー:", error);
-      setError("ロールの取得中にエラーが発生しました");
+      toast.error("エラー", {
+        description: "ロールの取得中にエラーが発生しました",
+        duration: 5000,
+      });
     }
   };
 
@@ -137,9 +183,7 @@ export default function UsersPage() {
   const handleDelete = async () => {
     if (!currentUser) return;
 
-    setError("");
-    setSuccess("");
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
       const response = await fetch(`/api/users/${currentUser.id}`, {
@@ -151,39 +195,49 @@ export default function UsersPage() {
         throw new Error(data.error || "ユーザーの削除に失敗しました");
       }
 
-      setSuccess("ユーザーが正常に削除されました");
+      toast.success("ユーザーが正常に削除されました", {
+        description: `${currentUser.name}を削除しました`,
+        duration: 3000,
+      });
       setIsDeleteDialogOpen(false);
       fetchUsers();
     } catch (error) {
       if (error instanceof Error) {
-        setError(error.message);
+        toast.error("エラー", {
+          description: error.message,
+          duration: 5000,
+        });
       } else {
-        setError("ユーザーの削除中にエラーが発生しました");
+        toast.error("エラー", {
+          description: "ユーザーの削除中にエラーが発生しました",
+          duration: 5000,
+        });
       }
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   // ユーザーの作成/更新
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
       const url = formData.id ? `/api/users/${formData.id}` : "/api/users";
       const method = formData.id ? "PUT" : "POST";
 
       // 更新時にパスワードが空の場合は送信しない
-      const body = formData.id && !formData.password
-        ? {
-            name: formData.name,
-            email: formData.email,
-            roleId: formData.roleId,
-          }
-        : formData;
+      const body =
+        formData.id && !formData.password
+          ? {
+              name: formData.name,
+              email: formData.email,
+              roleId: formData.roleId,
+              companyId: formData.companyId,
+              departmentId: formData.departmentId,
+            }
+          : formData;
 
       const response = await fetch(url, {
         method,
@@ -198,21 +252,34 @@ export default function UsersPage() {
         throw new Error(data.error || "ユーザーの保存に失敗しました");
       }
 
-      setSuccess(
-        formData.id
-          ? "ユーザーが正常に更新されました"
-          : "ユーザーが正常に作成されました"
-      );
+      if (formData.id) {
+        toast.success("更新完了", {
+          description: "ユーザーが正常に更新されました",
+          duration: 3000,
+        });
+      } else {
+        toast.success("作成完了", {
+          description: "ユーザーが正常に作成されました",
+          duration: 3000,
+        });
+      }
+
       setIsDialogOpen(false);
       fetchUsers();
     } catch (error) {
       if (error instanceof Error) {
-        setError(error.message);
+        toast.error("エラー", {
+          description: error.message,
+          duration: 5000,
+        });
       } else {
-        setError("ユーザーの保存中にエラーが発生しました");
+        toast.error("エラー", {
+          description: "ユーザーの保存中にエラーが発生しました",
+          duration: 5000,
+        });
       }
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -221,12 +288,18 @@ export default function UsersPage() {
     if (user) {
       setFormData({
         id: user.id,
-        name: user.name,
-        email: user.email,
-        password: "", // 編集時はパスワードを空にする
+        name: user.name || "",
+        email: user.email || "",
+        password: "",
         roleId: user.roleId || "",
+        companyId: user.companyId || "",
+        departmentId: user.departmentId || "",
       });
-      setCurrentUser(user);
+
+      // 会社IDがある場合は部署を取得
+      if (user.companyId) {
+        fetchDepartments(user.companyId);
+      }
     } else {
       setFormData({
         id: "",
@@ -234,8 +307,9 @@ export default function UsersPage() {
         email: "",
         password: "",
         roleId: "",
+        companyId: "",
+        departmentId: "",
       });
-      setCurrentUser(null);
     }
   };
 
@@ -249,20 +323,27 @@ export default function UsersPage() {
 
   // セレクト入力の処理
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    // 「none」の場合は空の文字列として扱う
+    const actualValue = value === "none" ? "" : value;
+    setFormData((prev) => ({ ...prev, [name]: actualValue }));
   };
 
   // ローディング中の表示
-  if (isLoading) {
+  if (isLoading && users.length === 0) {
     return <UsersSkeleton />;
   }
 
   // 検索でフィルタリングされたユーザー
-  const filteredUsers = users.filter(user => {
-    return searchTerm === "" || 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role?.name.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+  const filteredUsers = users.filter((user) => {
+    return (
+      searchTerm === "" ||
+      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.role?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.company?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.department?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      false
+    );
   });
 
   // コンテンツをPageTransitionでラップして表示
@@ -271,9 +352,9 @@ export default function UsersPage() {
       initial={{ opacity: 0, y: 0 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      transition={{ 
+      transition={{
         duration: 0.3,
-        ease: "easeOut"
+        ease: "easeOut",
       }}
       className="overflow-hidden"
     >
@@ -282,24 +363,6 @@ export default function UsersPage() {
         <div className="hidden">
           <h1 className="text-2xl font-bold text-gray-900">ユーザー管理</h1>
         </div>
-
-        {/* 成功メッセージ */}
-        {success && (
-          <Alert className="bg-green-50 text-green-800 border-green-200">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertTitle>成功</AlertTitle>
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* エラーメッセージ */}
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>エラー</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
 
         {/* 検索と新規作成 */}
         <Card>
@@ -322,13 +385,12 @@ export default function UsersPage() {
                   autoFocus={false}
                 />
               </div>
-              <Dialog open={isDialogOpen} onOpenChange={(open) => {
-                setIsDialogOpen(open);
-                // ダイアログが閉じたときにエラーをクリア
-                if (!open) {
-                  setError("");
-                }
-              }}>
+              <Dialog
+                open={isDialogOpen}
+                onOpenChange={(open) => {
+                  setIsDialogOpen(open);
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button
                     onClick={() => {
@@ -339,7 +401,7 @@ export default function UsersPage() {
                     新規ユーザー作成
                   </Button>
                 </DialogTrigger>
-                <DialogContent 
+                <DialogContent
                   className="sm:max-w-[500px]"
                   autoFocus={false}
                   onOpenAutoFocus={(e) => e.preventDefault()}
@@ -400,7 +462,9 @@ export default function UsersPage() {
                             onChange={handleChange}
                             className="pr-10"
                             required={!formData.id} // 新規作成時のみ必須
-                            placeholder={formData.id ? "変更しない場合は空白" : ""}
+                            placeholder={
+                              formData.id ? "変更しない場合は空白" : ""
+                            }
                             autoFocus={false}
                           />
                           <button
@@ -422,15 +486,18 @@ export default function UsersPage() {
                         </Label>
                         <Select
                           value={formData.roleId}
-                          onValueChange={(value) => handleSelectChange("roleId", value)}
+                          onValueChange={(value) =>
+                            handleSelectChange("roleId", value)
+                          }
                           required
                         >
-                          <SelectTrigger className="col-span-3" autoFocus={false}>
-                            <SelectValue placeholder="ロールを選択" />
-                          </SelectTrigger>
-                          <SelectContent 
+                          <SelectTrigger
+                            className="w-full col-span-3"
                             autoFocus={false}
                           >
+                            <SelectValue placeholder="ロールを選択" />
+                          </SelectTrigger>
+                          <SelectContent autoFocus={false}>
                             {roles.map((role) => (
                               <SelectItem key={role.id} value={role.id}>
                                 {role.name}
@@ -440,13 +507,68 @@ export default function UsersPage() {
                         </Select>
                       </div>
 
-                      {error && (
-                        <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>エラー</AlertTitle>
-                          <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                      )}
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="companyId" className="text-right">
+                          会社
+                        </Label>
+                        <Select
+                          value={formData.companyId || "none"}
+                          onValueChange={(value) => {
+                            handleSelectChange("companyId", value);
+                            // 会社が変更されたら部署をリセット
+                            setFormData((prev) => ({
+                              ...prev,
+                              departmentId: "",
+                            }));
+                          }}
+                        >
+                          <SelectTrigger
+                            className="w-full col-span-3"
+                            autoFocus={false}
+                          >
+                            <SelectValue placeholder="会社を選択" />
+                          </SelectTrigger>
+                          <SelectContent autoFocus={false}>
+                            <SelectItem value="none">選択なし</SelectItem>
+                            {companies.map((company) => (
+                              <SelectItem key={company.id} value={company.id}>
+                                {company.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="departmentId" className="text-right">
+                          部署
+                        </Label>
+                        <Select
+                          value={formData.departmentId || "none"}
+                          onValueChange={(value) => handleSelectChange("departmentId", value)}
+                          disabled={!formData.companyId || filteredDepartments.length === 0}
+                        >
+                          <SelectTrigger className="w-full col-span-3" autoFocus={false}>
+                            <SelectValue placeholder={
+                              !formData.companyId 
+                                ? "先に会社を選択してください" 
+                                : filteredDepartments.length === 0 
+                                  ? "部署がありません" 
+                                  : "部署を選択"
+                            } />
+                          </SelectTrigger>
+                          <SelectContent 
+                            autoFocus={false}
+                          >
+                            <SelectItem value="none">選択なし</SelectItem>
+                            {filteredDepartments.map((department) => (
+                              <SelectItem key={department.id} value={department.id}>
+                                {department.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button
@@ -459,9 +581,9 @@ export default function UsersPage() {
                       <Button
                         type="submit"
                         className="bg-blue-600 hover:bg-blue-700 text-white"
-                        disabled={isLoading}
+                        disabled={isSubmitting}
                       >
-                        {isLoading
+                        {isSubmitting
                           ? "保存中..."
                           : formData.id
                           ? "更新する"
@@ -480,8 +602,8 @@ export default function UsersPage() {
           <CardHeader className="flex-none">
             <CardTitle>ユーザー一覧</CardTitle>
             <CardDescription>
-              {filteredUsers.length === 0 
-                ? "検索条件に一致するユーザーがありません" 
+              {filteredUsers.length === 0
+                ? "検索条件に一致するユーザーがありません"
                 : `${filteredUsers.length}件のユーザーが見つかりました`}
             </CardDescription>
           </CardHeader>
@@ -491,24 +613,34 @@ export default function UsersPage() {
                 <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
                   <TableRow>
                     <TableHead className="bg-white border-b">名前</TableHead>
-                    <TableHead className="bg-white border-b">メールアドレス</TableHead>
+                    <TableHead className="bg-white border-b">
+                      メールアドレス
+                    </TableHead>
                     <TableHead className="bg-white border-b">ロール</TableHead>
-                    <TableHead className="text-right bg-white border-b">操作</TableHead>
+                    <TableHead className="bg-white border-b">会社</TableHead>
+                    <TableHead className="bg-white border-b">部署</TableHead>
+                    <TableHead className="text-right bg-white border-b">
+                      操作
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-4">
+                      <TableCell colSpan={6} className="text-center py-4">
                         ユーザーが見つかりません
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredUsers.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {user.name}
+                        </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{user.role?.name || "-"}</TableCell>
+                        <TableCell>{user.company?.name || "-"}</TableCell>
+                        <TableCell>{user.department?.name || "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
                             <Button
@@ -546,14 +678,13 @@ export default function UsersPage() {
         </Card>
 
         {/* 削除確認ダイアログ */}
-        <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
-          setIsDeleteDialogOpen(open);
-          // ダイアログが閉じたときにエラーをクリア
-          if (!open) {
-            setError("");
-          }
-        }}>
-          <DialogContent 
+        <Dialog
+          open={isDeleteDialogOpen}
+          onOpenChange={(open) => {
+            setIsDeleteDialogOpen(open);
+          }}
+        >
+          <DialogContent
             className="sm:max-w-[425px]"
             onInteractOutside={(e) => e.preventDefault()}
           >
@@ -565,18 +696,13 @@ export default function UsersPage() {
             </DialogHeader>
             <div className="py-4">
               <p className="text-sm text-gray-700">
-                ユーザー名: <span className="font-medium">{currentUser?.name}</span>
+                ユーザー名:{" "}
+                <span className="font-medium">{currentUser?.name}</span>
               </p>
               <p className="text-sm text-gray-700">
-                メールアドレス: <span className="font-medium">{currentUser?.email}</span>
+                メールアドレス:{" "}
+                <span className="font-medium">{currentUser?.email}</span>
               </p>
-              {error && (
-                <Alert variant="destructive" className="mt-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>エラー</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
             </div>
             <DialogFooter>
               <Button
@@ -590,8 +716,9 @@ export default function UsersPage() {
                 type="button"
                 variant="destructive"
                 onClick={handleDelete}
+                disabled={isSubmitting}
               >
-                削除する
+                {isSubmitting ? "削除中..." : "削除する"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -599,4 +726,4 @@ export default function UsersPage() {
       </div>
     </motion.div>
   );
-} 
+}

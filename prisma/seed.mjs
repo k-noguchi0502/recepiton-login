@@ -32,6 +32,14 @@ async function main() {
           'role:read',
           'role:update',
           'role:delete',
+          'company:create',
+          'company:read',
+          'company:update',
+          'company:delete',
+          'department:create',
+          'department:read',
+          'department:update',
+          'department:delete',
           'settings:read',
           'settings:update',
           'page:demo1',
@@ -50,6 +58,8 @@ async function main() {
         description: '一般ユーザー権限',
         permissions: [
           'user:read',
+          'company:read',
+          'department:read',
           'page:demo1',
         ],
       },
@@ -65,6 +75,8 @@ async function main() {
         description: '閲覧専用権限',
         permissions: [
           'user:read',
+          'company:read',
+          'department:read',
         ],
       },
     });
@@ -96,6 +108,130 @@ async function main() {
         },
       });
       console.log('管理者ユーザーを作成しました');
+    }
+  }
+
+  // サンプル会社の作成
+  const company1Exists = await prisma.company.findFirst({
+    where: {
+      name: '株式会社サンプル',
+    },
+  });
+
+  const company2Exists = await prisma.company.findFirst({
+    where: {
+      name: 'テスト株式会社',
+    },
+  });
+
+  let company1, company2;
+
+  if (!company1Exists) {
+    company1 = await prisma.company.create({
+      data: {
+        name: '株式会社サンプル',
+        description: 'サンプル会社の説明文です',
+        address: '東京都渋谷区サンプル町1-1-1',
+        phone: '03-1234-5678',
+        email: 'info@sample.co.jp',
+        website: 'https://sample.co.jp',
+      },
+    });
+    console.log('サンプル会社1を作成しました');
+  } else {
+    company1 = company1Exists;
+  }
+
+  if (!company2Exists) {
+    company2 = await prisma.company.create({
+      data: {
+        name: 'テスト株式会社',
+        description: 'テスト用の会社です',
+        address: '大阪府大阪市テスト区2-2-2',
+        phone: '06-9876-5432',
+        email: 'info@test.co.jp',
+        website: 'https://test.co.jp',
+      },
+    });
+    console.log('サンプル会社2を作成しました');
+  } else {
+    company2 = company2Exists;
+  }
+
+  // サンプル部署の作成
+  if (company1) {
+    const dept1Exists = await prisma.department.findFirst({
+      where: {
+        name: '営業部',
+        companyId: company1.id,
+      },
+    });
+
+    const dept2Exists = await prisma.department.findFirst({
+      where: {
+        name: '開発部',
+        companyId: company1.id,
+      },
+    });
+
+    if (!dept1Exists) {
+      await prisma.department.create({
+        data: {
+          name: '営業部',
+          description: '営業活動を担当する部署',
+          companyId: company1.id,
+        },
+      });
+      console.log('営業部を作成しました');
+    }
+
+    if (!dept2Exists) {
+      await prisma.department.create({
+        data: {
+          name: '開発部',
+          description: 'システム開発を担当する部署',
+          companyId: company1.id,
+        },
+      });
+      console.log('開発部を作成しました');
+    }
+  }
+
+  if (company2) {
+    const dept3Exists = await prisma.department.findFirst({
+      where: {
+        name: '人事部',
+        companyId: company2.id,
+      },
+    });
+
+    const dept4Exists = await prisma.department.findFirst({
+      where: {
+        name: '経理部',
+        companyId: company2.id,
+      },
+    });
+
+    if (!dept3Exists) {
+      await prisma.department.create({
+        data: {
+          name: '人事部',
+          description: '人事・採用を担当する部署',
+          companyId: company2.id,
+        },
+      });
+      console.log('人事部を作成しました');
+    }
+
+    if (!dept4Exists) {
+      await prisma.department.create({
+        data: {
+          name: '経理部',
+          description: '経理・財務を担当する部署',
+          companyId: company2.id,
+        },
+      });
+      console.log('経理部を作成しました');
     }
   }
 }

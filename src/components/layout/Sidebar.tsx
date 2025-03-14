@@ -17,7 +17,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Home, PanelLeft, Users, Shield, Grid } from "lucide-react";
+import { Home, PanelLeft, Users, Shield, Grid, Building, Briefcase, FileText } from "lucide-react";
 
 interface SidebarProps {
   className?: string;
@@ -45,10 +45,27 @@ const navigation: NavItem[] = [
     requiredPermissions: ["user:read"],
   },
   {
+    name: "会社管理",
+    href: "/dashboard/companies",
+    icon: <Building className="h-5 w-5" />,
+    requiredPermissions: ["company:read"],
+  },
+  {
+    name: "部署管理",
+    href: "/dashboard/departments",
+    icon: <Briefcase className="h-5 w-5" />,
+    requiredPermissions: ["department:read"],
+  },
+  {
     name: "ロール管理",
     href: "/dashboard/roles",
     icon: <Shield className="h-5 w-5" />,
     requiredPermissions: ["role:read"],
+  },
+  {
+    name: "ドキュメント",
+    href: "/dashboard/documentation",
+    icon: <FileText className="h-5 w-5" />,
   },
 ];
 

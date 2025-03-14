@@ -13,6 +13,16 @@ declare module "next-auth" {
         description?: string | null;
         permissions: string[];
       } | null;
+      company?: {
+        id: string;
+        name: string;
+        description?: string | null;
+      } | null;
+      department?: {
+        id: string;
+        name: string;
+        description?: string | null;
+      } | null;
     };
   }
 }
@@ -25,6 +35,16 @@ declare module "next-auth/jwt" {
       name: string;
       description?: string | null;
       permissions: string[];
+    } | null;
+    company?: {
+      id: string;
+      name: string;
+      description?: string | null;
+    } | null;
+    department?: {
+      id: string;
+      name: string;
+      description?: string | null;
     } | null;
   }
 }

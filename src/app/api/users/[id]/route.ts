@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission } from "@/lib/permissions";
+import bcrypt from "bcrypt";
 
 // 特定のユーザーを取得
 export async function GET(
@@ -37,9 +38,25 @@ export async function GET(
         email: true,
         image: true,
         roleId: true,
+        companyId: true,
+        departmentId: true,
         createdAt: true,
         updatedAt: true,
         role: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+        company: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+        department: {
           select: {
             id: true,
             name: true,
@@ -91,7 +108,7 @@ export async function PUT(
 
     // リクエストボディを取得
     const body = await request.json();
-    const { name, email, roleId } = body;
+    const { name, email, password, roleId, companyId, departmentId } = body;
 
     // ユーザーの存在確認
     const existingUser = await prisma.user.findUnique({
@@ -139,22 +156,103 @@ export async function PUT(
       }
     }
 
+    // 会社の存在チェック（指定されている場合）
+    if (companyId) {
+      const company = await prisma.company.findUnique({
+        where: { id: companyId },
+      });
+
+      if (!company) {
+        return NextResponse.json(
+          { error: "指定された会社が存在しません" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 部署の存在チェック（指定されている場合）
+    if (departmentId) {
+      const department = await prisma.department.findUnique({
+        where: { id: departmentId },
+      });
+
+      if (!department) {
+        return NextResponse.json(
+          { error: "指定された部署が存在しません" },
+          { status: 400 }
+        );
+      }
+
+      // 部署が指定されている場合は会社も指定されているか確認
+      const newCompanyId = companyId || existingUser.companyId;
+      if (!newCompanyId) {
+        return NextResponse.json(
+          { error: "部署を指定する場合は会社も指定してください" },
+          { status: 400 }
+        );
+      }
+
+      // 部署が指定された会社に属しているか確認
+      if (department.companyId !== newCompanyId) {
+        return NextResponse.json(
+          { error: "指定された部署は指定された会社に属していません" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // パスワードのハッシュ化（指定されている場合）
+    let hashedPassword;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
     // ユーザー情報を更新
+    const updateData: {
+      name?: string | null;
+      email?: string | null;
+      roleId?: string | null;
+      companyId?: string | null;
+      departmentId?: string | null;
+      password?: string;
+    } = {
+      name: name !== undefined ? name : existingUser.name,
+      email: email !== undefined ? email : existingUser.email,
+      roleId: roleId !== undefined ? roleId : existingUser.roleId,
+      companyId: companyId !== undefined ? companyId : existingUser.companyId,
+      departmentId: departmentId !== undefined ? departmentId : existingUser.departmentId,
+    };
+
+    // パスワードが指定されている場合のみ更新
+    if (hashedPassword) {
+      updateData.password = hashedPassword;
+    }
+
     const updatedUser = await prisma.user.update({
       where: {
         id: params.id,
       },
-      data: {
-        name: name !== undefined ? name : existingUser.name,
-        email: email !== undefined ? email : existingUser.email,
-        roleId: roleId !== undefined ? roleId : existingUser.roleId,
-      },
+      data: updateData,
       select: {
         id: true,
         name: true,
         email: true,
         roleId: true,
+        companyId: true,
+        departmentId: true,
         role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        company: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        department: {
           select: {
             id: true,
             name: true,
