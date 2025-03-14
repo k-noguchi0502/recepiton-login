@@ -96,8 +96,7 @@ export function LoginForm({ onSuccess, className }: LoginFormProps) {
     <Card className={`border-0 shadow-lg ${className}`}>
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl text-center">ログイン</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+      </CardHeader>      <CardContent className="grid gap-4">
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4">
             {error && (

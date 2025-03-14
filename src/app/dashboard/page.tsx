@@ -6,7 +6,6 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent
 } from "@/components/ui/card";
 import { motion } from "framer-motion";
@@ -52,9 +51,6 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>ユーザー情報</CardTitle>
-            <CardDescription>
-              ようこそ、{session?.user.name}さん
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <UserInfoCard user={session?.user} />

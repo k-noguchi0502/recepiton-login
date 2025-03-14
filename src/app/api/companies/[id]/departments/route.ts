@@ -69,9 +69,28 @@ export async function GET(
 
     return NextResponse.json(departments);
   } catch (error) {
-    console.error("部署一覧取得エラー:", error);
+    // より詳細なエラーログ
+    console.error("部署一覧取得エラー:", {
+      message: error instanceof Error ? error.message : "不明なエラー",
+      stack: error instanceof Error ? error.stack : undefined,
+      error
+    });
+    
+    // エラーの種類に応じたメッセージ
+    let errorMessage = "部署一覧の取得中にエラーが発生しました";
+    
+    if (error instanceof Error) {
+      if (error.message.includes("database") || error.message.includes("connection")) {
+        errorMessage = "データベース接続エラーが発生しました。しばらく経ってからお試しください。";
+      } else if (error.message.includes("timeout")) {
+        errorMessage = "サーバーからの応答がタイムアウトしました。しばらく経ってからお試しください。";
+      } else if (error.message.includes("prisma")) {
+        errorMessage = "データ取得中にエラーが発生しました。システム管理者にお問い合わせください。";
+      }
+    }
+    
     return NextResponse.json(
-      { error: "部署一覧の取得中にエラーが発生しました" },
+      { error: errorMessage, details: error instanceof Error ? error.message : undefined },
       { status: 500 }
     );
   }

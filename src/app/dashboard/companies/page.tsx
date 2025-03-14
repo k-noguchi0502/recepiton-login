@@ -75,6 +75,14 @@ export default function CompaniesPage() {
     }
   }, [status, session, router]);
 
+  // 権限チェック用のヘルパー関数
+  const hasPermission = (permission: string): boolean => {
+    if (!session || !session.user.role || !session.user.role.permissions) {
+      return false;
+    }
+    return session.user.role.permissions.includes(permission);
+  };
+
   // 会社一覧の取得
   useEffect(() => {
     if (status === "authenticated") {
@@ -293,6 +301,7 @@ export default function CompaniesPage() {
                     onClick={() => {
                       initializeForm();
                     }}
+                    disabled={!hasPermission("company:create")}
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     新規会社作成
@@ -498,6 +507,7 @@ export default function CompaniesPage() {
                                 initializeForm(company);
                                 setIsDialogOpen(true);
                               }}
+                              disabled={!hasPermission("company:update")}
                             >
                               <Pencil className="h-4 w-4" />
                               <span className="sr-only">編集</span>
@@ -510,6 +520,7 @@ export default function CompaniesPage() {
                                 setCurrentCompany(company);
                                 setIsDeleteDialogOpen(true);
                               }}
+                              disabled={!hasPermission("company:delete")}
                             >
                               <Trash2 className="h-4 w-4" />
                               <span className="sr-only">削除</span>

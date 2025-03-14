@@ -83,6 +83,14 @@ export default function DepartmentsPage() {
     }
   }, [status, session, router]);
 
+  // 権限チェック用のヘルパー関数
+  const hasPermission = (permission: string): boolean => {
+    if (!session || !session.user.role || !session.user.role.permissions) {
+      return false;
+    }
+    return session.user.role.permissions.includes(permission);
+  };
+
   // 会社一覧の取得
   useEffect(() => {
     if (status === "authenticated") {
@@ -117,18 +125,38 @@ export default function DepartmentsPage() {
   };
 
   const fetchAllDepartments = async () => {
+    let retryCount = 0;
+    const maxRetries = 3;
+    
     try {
       setIsLoading(true);
-      const response = await fetch("/api/departments");
-      if (!response.ok) {
-        throw new Error("部署の取得に失敗しました");
-      }
-      const data = await response.json();
+      
+      const fetchWithRetry = async () => {
+        try {
+          const response = await fetch("/api/departments");
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "部署の取得に失敗しました");
+          }
+          return await response.json();
+        } catch (error) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`部署データ取得リトライ (${retryCount}/${maxRetries})...`);
+            // 指数バックオフでリトライ (300ms, 900ms, 2700ms)
+            await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(3, retryCount - 1)));
+            return fetchWithRetry();
+          }
+          throw error;
+        }
+      };
+      
+      const data = await fetchWithRetry();
       setDepartments(data);
     } catch (error) {
       console.error("部署取得エラー:", error);
       toast.error("エラー", {
-        description: "部署の取得中にエラーが発生しました",
+        description: error instanceof Error ? error.message : "部署の取得中にエラーが発生しました",
         duration: 5000,
       });
     } finally {
@@ -137,18 +165,38 @@ export default function DepartmentsPage() {
   };
 
   const fetchDepartments = async (companyId: string) => {
+    let retryCount = 0;
+    const maxRetries = 3;
+    
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/companies/${companyId}/departments`);
-      if (!response.ok) {
-        throw new Error("部署の取得に失敗しました");
-      }
-      const data = await response.json();
+      
+      const fetchWithRetry = async () => {
+        try {
+          const response = await fetch(`/api/companies/${companyId}/departments`);
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "部署の取得に失敗しました");
+          }
+          return await response.json();
+        } catch (error) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`部署データ取得リトライ (${retryCount}/${maxRetries})...`);
+            // 指数バックオフでリトライ (300ms, 900ms, 2700ms)
+            await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(3, retryCount - 1)));
+            return fetchWithRetry();
+          }
+          throw error;
+        }
+      };
+      
+      const data = await fetchWithRetry();
       setDepartments(data);
     } catch (error) {
       console.error("部署取得エラー:", error);
       toast.error("エラー", {
-        description: "部署の取得中にエラーが発生しました",
+        description: error instanceof Error ? error.message : "部署の取得中にエラーが発生しました",
         duration: 5000,
       });
     } finally {
@@ -381,7 +429,7 @@ export default function DepartmentsPage() {
                     onClick={() => {
                       initializeForm();
                     }}
-                    disabled={selectedCompany === "all"}
+                    disabled={selectedCompany === "all" || !hasPermission("department:create")}
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     新規部署作成
@@ -526,6 +574,7 @@ export default function DepartmentsPage() {
                                 initializeForm(department);
                                 setIsDialogOpen(true);
                               }}
+                              disabled={!hasPermission("department:update")}
                             >
                               <Pencil className="h-4 w-4" />
                               <span className="sr-only">編集</span>
@@ -538,6 +587,7 @@ export default function DepartmentsPage() {
                                 setCurrentDepartment(department);
                                 setIsDeleteDialogOpen(true);
                               }}
+                              disabled={!hasPermission("department:delete")}
                             >
                               <Trash2 className="h-4 w-4" />
                               <span className="sr-only">削除</span>

@@ -45,7 +45,7 @@ export function UserInfoCard({ user, className }: UserInfoCardProps) {
           <p className="mt-1 text-sm text-gray-900">{user?.id || "未設定"}</p>
         </div>
         <div>
-          <p className="text-sm font-medium text-gray-500">ロール</p>
+          <p className="text-sm font-medium text-gray-500">ロール（役割）</p>
           <p className="mt-1 text-sm text-gray-900">
             {user?.role?.name || "未設定"}
             {user?.role?.description && (

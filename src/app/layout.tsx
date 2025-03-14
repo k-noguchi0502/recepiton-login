@@ -24,8 +24,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PWAサンプルアプリ",
-  description: "Next.jsで作成したPWAサンプルアプリ",
+  title: "TOCH-HUB",
+  description: "TOCH-HUB",
 };
 
 export default function RootLayout({
@@ -34,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" suppressHydrationWarning className={notoSansJP.className}>
+    <html lang="ja" suppressHydrationWarning className={`${notoSansJP.className} light`}>
       <head>
         <meta name="viewport" content="viewport-fit=cover" />
       </head>

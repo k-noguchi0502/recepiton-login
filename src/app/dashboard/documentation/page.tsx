@@ -17,12 +17,12 @@ export default function DocumentationPage() {
       </div>
 
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full md:w-[600px] gap-1">
-          <TabsTrigger value="overview">概要</TabsTrigger>
-          <TabsTrigger value="er-diagram">ER図</TabsTrigger>
-          <TabsTrigger value="api">API</TabsTrigger>
-          <TabsTrigger value="screens">画面構成</TabsTrigger>
-          <TabsTrigger value="tech-stack">技術スタック</TabsTrigger>
+        <TabsList className="flex flex-wrap w-full gap-1">
+          <TabsTrigger value="overview" className="flex-auto px-2 py-1 text-xs sm:text-sm">概要</TabsTrigger>
+          <TabsTrigger value="er-diagram" className="flex-auto px-2 py-1 text-xs sm:text-sm">ER図</TabsTrigger>
+          <TabsTrigger value="api" className="flex-auto px-2 py-1 text-xs sm:text-sm">API</TabsTrigger>
+          <TabsTrigger value="screens" className="flex-auto px-2 py-1 text-xs sm:text-sm">画面構成</TabsTrigger>
+          <TabsTrigger value="tech-stack" className="flex-auto px-2 py-1 text-xs sm:text-sm">技術スタック</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 overflow-x-hidden">
@@ -635,7 +635,7 @@ export default function DocumentationPage() {
                   </div>
                   <div>
                     <span className="font-medium">モダンなUI/UX</span>
-                    <p className="text-sm text-muted-foreground">レスポンシブデザイン、アニメーション効果、ダークモード対応</p>
+                    <p className="text-sm text-muted-foreground">レスポンシブデザイン、アニメーション効果</p>
                   </div>
                 </li>
                 <li className="flex items-start">

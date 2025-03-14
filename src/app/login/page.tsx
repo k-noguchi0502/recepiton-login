@@ -53,10 +53,18 @@ function LoginPageContent() {
           <div className="flex flex-col justify-center items-center p-8 md:p-12 w-full landscape:md:w-1/2 bg-white">
             <div className="w-full max-w-md space-y-8">
               <div className="text-center">
-                <h2 className="mt-6 text-3xl font-extrabold text-gray-900">管理システム</h2>
+                <div className="mt-6 flex justify-center">
+                  <Image
+                    src="/images/logo.png"
+                    alt="TOCH-HUB"
+                    width={200}
+                    height={60}
+                    priority
+                  />
+                </div>
               </div>
-              
-              <LoginForm 
+
+              <LoginForm
                 onSuccess={() => {
                   router.push("/dashboard");
                   router.refresh();

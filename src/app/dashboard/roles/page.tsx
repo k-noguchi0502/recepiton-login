@@ -77,6 +77,11 @@ export default function RolesPage() {
     }
   }, [status, session, router]);
 
+  // 権限チェック用のヘルパー関数（ローカル版）
+  const checkPermission = (permission: string): boolean => {
+    return hasPermission(session, permission);
+  };
+
   // ロール一覧の取得
   useEffect(() => {
     if (status === "authenticated") {
@@ -304,6 +309,7 @@ export default function RolesPage() {
                     onClick={() => {
                       initializeForm();
                     }}
+                    disabled={!checkPermission("role:create")}
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     新規ロール作成
@@ -472,6 +478,7 @@ export default function RolesPage() {
                                 initializeForm(role);
                                 setIsDialogOpen(true);
                               }}
+                              disabled={!checkPermission("role:update")}
                             >
                               <Pencil className="h-4 w-4" />
                               <span className="sr-only">編集</span>
@@ -487,7 +494,8 @@ export default function RolesPage() {
                               disabled={
                                 role.name === "admin" ||
                                 role.name === "user" ||
-                                role.name === "viewer"
+                                role.name === "viewer" ||
+                                !checkPermission("role:delete")
                               }
                             >
                               <Trash2 className="h-4 w-4" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,7 @@ export default function UsersPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([]);
+  const [allDepartments, setAllDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -88,14 +89,26 @@ export default function UsersPage() {
     }
   }, [status, session, router]);
 
+  // 権限チェック用のヘルパー関数
+  const hasPermission = useCallback((permission: string): boolean => {
+    if (!session || !session.user.role || !session.user.role.permissions) {
+      return false;
+    }
+    return session.user.role.permissions.includes(permission);
+  }, [session]);
+
   // ユーザー一覧とロール一覧の取得
   useEffect(() => {
     if (status === "authenticated") {
       fetchUsers();
-      fetchRoles();
+      // ロール取得権限がある場合のみロールを取得
+      if (hasPermission("role:read")) {
+        fetchRoles();
+      }
       fetchCompanies();
+      fetchAllDepartments();
     }
-  }, [status]);
+  }, [status, hasPermission]);
 
   // 会社一覧の取得
   const fetchCompanies = async () => {
@@ -115,15 +128,15 @@ export default function UsersPage() {
     }
   };
 
-  // 部署一覧の取得
-  const fetchDepartments = async (companyId: string) => {
+  // すべての部署を一度に取得
+  const fetchAllDepartments = async () => {
     try {
-      const response = await fetch(`/api/companies/${companyId}/departments`);
+      const response = await fetch("/api/departments");
       if (!response.ok) {
         throw new Error("部署の取得に失敗しました");
       }
       const data = await response.json();
-      setFilteredDepartments(data);
+      setAllDepartments(data);
     } catch (error) {
       console.error("部署取得エラー:", error);
       toast.error("エラー", {
@@ -133,14 +146,17 @@ export default function UsersPage() {
     }
   };
 
-  // 会社が変更されたときに部署一覧を更新
+  // 会社が変更されたときに部署一覧をフィルタリング
   useEffect(() => {
     if (formData.companyId) {
-      fetchDepartments(formData.companyId);
+      const filtered = allDepartments.filter(
+        (dept) => dept.companyId === formData.companyId
+      );
+      setFilteredDepartments(filtered);
     } else {
       setFilteredDepartments([]);
     }
-  }, [formData.companyId]);
+  }, [formData.companyId, allDepartments]);
 
   const fetchUsers = async () => {
     try {
@@ -150,6 +166,7 @@ export default function UsersPage() {
         throw new Error("ユーザーの取得に失敗しました");
       }
       const data = await response.json();
+      console.log("取得したユーザーデータ:", data);
       setUsers(data);
     } catch (error) {
       console.error("ユーザー取得エラー:", error);
@@ -239,6 +256,11 @@ export default function UsersPage() {
             }
           : formData;
 
+      // ロール取得権限がなく、新規作成時にロールIDが指定されていない場合はエラー
+      if (!hasPermission("role:read") && !formData.id && !formData.roleId) {
+        throw new Error("ロール取得権限がないため、ユーザーを作成できません。管理者に連絡してください。");
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -296,9 +318,12 @@ export default function UsersPage() {
         departmentId: user.departmentId || "",
       });
 
-      // 会社IDがある場合は部署を取得
+      // 会社IDがある場合は部署をフィルタリング
       if (user.companyId) {
-        fetchDepartments(user.companyId);
+        const filtered = allDepartments.filter(
+          (dept) => dept.companyId === user.companyId
+        );
+        setFilteredDepartments(filtered);
       }
     } else {
       setFormData({
@@ -369,7 +394,7 @@ export default function UsersPage() {
           <CardHeader>
             <CardTitle>ユーザー検索</CardTitle>
             <CardDescription>
-              名前、メールアドレス、ロールで検索できます
+              名前、メールアドレス、ロール（役割）で検索できます
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -396,6 +421,7 @@ export default function UsersPage() {
                     onClick={() => {
                       initializeForm();
                     }}
+                    disabled={!hasPermission("user:create")}
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     新規ユーザー作成
@@ -482,7 +508,7 @@ export default function UsersPage() {
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="roleId" className="text-right">
-                          ロール
+                          ロール（役割）
                         </Label>
                         <Select
                           value={formData.roleId}
@@ -490,19 +516,29 @@ export default function UsersPage() {
                             handleSelectChange("roleId", value)
                           }
                           required
+                          disabled={!hasPermission("role:read")}
                         >
                           <SelectTrigger
                             className="w-full col-span-3"
                             autoFocus={false}
                           >
-                            <SelectValue placeholder="ロールを選択" />
+                            <SelectValue placeholder={!hasPermission("role:read") ? "ロール取得権限がありません" : "ロール（役割）を選択"} />
                           </SelectTrigger>
                           <SelectContent autoFocus={false}>
-                            {roles.map((role) => (
+                            {hasPermission("role:read") ? roles.map((role) => (
                               <SelectItem key={role.id} value={role.id}>
                                 {role.name}
+                                {role.description && (
+                                  <span className="ml-2 text-xs text-gray-500">
+                                    - {role.description}
+                                  </span>
+                                )}
                               </SelectItem>
-                            ))}
+                            )) : (
+                              <SelectItem value="" disabled>
+                                ロール取得権限がありません
+                              </SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -616,7 +652,7 @@ export default function UsersPage() {
                     <TableHead className="bg-white border-b">
                       メールアドレス
                     </TableHead>
-                    <TableHead className="bg-white border-b">ロール</TableHead>
+                    <TableHead className="bg-white border-b">ロール（役割）</TableHead>
                     <TableHead className="bg-white border-b">会社</TableHead>
                     <TableHead className="bg-white border-b">部署</TableHead>
                     <TableHead className="text-right bg-white border-b">
@@ -650,6 +686,7 @@ export default function UsersPage() {
                                 initializeForm(user);
                                 setIsDialogOpen(true);
                               }}
+                              disabled={!hasPermission("user:update")}
                             >
                               <Pencil className="h-4 w-4" />
                               <span className="sr-only">編集</span>
@@ -662,6 +699,7 @@ export default function UsersPage() {
                                 setCurrentUser(user);
                                 setIsDeleteDialogOpen(true);
                               }}
+                              disabled={!hasPermission("user:delete")}
                             >
                               <Trash2 className="h-4 w-4" />
                               <span className="sr-only">削除</span>
@@ -703,6 +741,19 @@ export default function UsersPage() {
                 メールアドレス:{" "}
                 <span className="font-medium">{currentUser?.email}</span>
               </p>
+              {currentUser?.role && (
+                <p className="text-sm text-gray-700">
+                  ロール（役割）:{" "}
+                  <span className="font-medium">
+                    {currentUser.role.name}
+                    {currentUser.role.description && (
+                      <span className="ml-1 text-xs text-gray-500">
+                        - {currentUser.role.description}
+                      </span>
+                    )}
+                  </span>
+                </p>
+              )}
             </div>
             <DialogFooter>
               <Button
